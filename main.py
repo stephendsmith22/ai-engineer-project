@@ -55,6 +55,7 @@ NEWS_SCHEMA = [
 ]
 
 WEATHER_SCHEMA = [
+    bigquery.SchemaField("forecast_id", "STRING"),
     bigquery.SchemaField("city", "STRING"),
     bigquery.SchemaField("datetime", "TIMESTAMP"),
     bigquery.SchemaField("temperature", "FLOAT"),
@@ -91,13 +92,35 @@ def ensure_dataset_and_table(
     logger.info(f"Table '{table_id}' ready")
 
 
-def load_to_bigquery(records: list, dataset_id: str, table_id: str, schema: list):
+def load_to_bigquery(
+    records: list, dataset_id: str, table_id: str, schema: list, dedup_field: str = None
+):
     client = bigquery.Client(project=gcp_project_id)
     ensure_dataset_and_table(client, dataset_id, table_id, schema)
 
     table_ref = f"{gcp_project_id}.{dataset_id}.{table_id}"
+
+    if dedup_field:
+        incoming_ids = [r[dedup_field] for r in records]
+        existing = client.query(
+            f"SELECT {dedup_field} FROM `{table_ref}` WHERE {dedup_field} IN UNNEST(@ids)",
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ArrayQueryParameter("ids", "STRING", incoming_ids)
+                ]
+            ),
+        ).result()
+        existing_ids = {row[dedup_field] for row in existing}
+        records = [r for r in records if r[dedup_field] not in existing_ids]
+        if not records:
+            logger.info("No new records to insert — all already exist")
+            return
+        write_disposition = bigquery.WriteDisposition.WRITE_APPEND
+    else:
+        write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
+
     job_config = bigquery.LoadJobConfig(
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        write_disposition=write_disposition,
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
     )
     job = client.load_table_from_json(records, table_ref, job_config=job_config)
@@ -176,7 +199,7 @@ def fetch_weather():
 
     weather_url = (
         "https://api.openweathermap.org/data/2.5/forecast?"
-        f"q={city}&"
+        f"q=Miami&"
         f"units=imperial&"
         f"cnt=3&"
         f"appid={weather_api_key}"
@@ -195,9 +218,13 @@ def fetch_weather():
             return
 
         for forecast in data.get("list", []):
+            city = data.get("city", {}).get("name", "")
+            dt_txt = forecast.get("dt_txt", "")
+            forecast_id = hashlib.sha256(f"{city}_{dt_txt}".encode()).hexdigest()
             record = {
-                "city": data.get("city", {}).get("name", ""),
-                "datetime": forecast.get("dt_txt", ""),
+                "forecast_id": forecast_id,
+                "city": city,
+                "datetime": dt_txt,
                 "temperature": forecast.get("main", {}).get("temp", ""),
                 "feels_like": forecast.get("main", {}).get("feels_like", ""),
                 "temp_min": forecast.get("main", {}).get("temp_min", ""),
@@ -213,7 +240,11 @@ def fetch_weather():
             transformed_records.append(record)
 
         load_to_bigquery(
-            transformed_records, WEATHER_DATASET_ID, WEATHER_TABLE_ID, WEATHER_SCHEMA
+            transformed_records,
+            WEATHER_DATASET_ID,
+            WEATHER_TABLE_ID,
+            WEATHER_SCHEMA,
+            dedup_field="forecast_id",
         )
         send_discord_alert(
             f"Weather Pipeline succeeded: Loaded {len(transformed_records)} weather records"
