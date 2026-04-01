@@ -173,6 +173,7 @@ def fetch_news():
                 "url": url,
                 "url_to_image": article.get("urlToImage", ""),
                 "published_at": article.get("publishedAt"),
+                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 "content": article.get("content", ""),
             }
             transformed_records.append(record)
@@ -242,6 +243,7 @@ def fetch_weather():
                 ),
                 "wind_speed": forecast.get("wind", {}).get("speed", ""),
                 "visibility": forecast.get("visibility", ""),
+                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             }
             transformed_records.append(record)
 
