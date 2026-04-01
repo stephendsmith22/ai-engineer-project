@@ -51,12 +51,18 @@ NEWS_SCHEMA = [
     bigquery.SchemaField("url", "STRING"),
     bigquery.SchemaField("url_to_image", "STRING"),
     bigquery.SchemaField("published_at", "TIMESTAMP"),
+    bigquery.SchemaField(
+        "created_at", "TIMESTAMP", default_value_expression="CURRENT_TIMESTAMP()"
+    ),
     bigquery.SchemaField("content", "STRING"),
 ]
 
 WEATHER_SCHEMA = [
     bigquery.SchemaField("forecast_id", "STRING"),
     bigquery.SchemaField("city", "STRING"),
+    bigquery.SchemaField(
+        "created_at", "TIMESTAMP", default_value_expression="CURRENT_TIMESTAMP()"
+    ),
     bigquery.SchemaField("datetime", "TIMESTAMP"),
     bigquery.SchemaField("temperature", "FLOAT"),
     bigquery.SchemaField("feels_like", "FLOAT"),
@@ -167,6 +173,7 @@ def fetch_news():
                 "url": url,
                 "url_to_image": article.get("urlToImage", ""),
                 "published_at": article.get("publishedAt"),
+                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 "content": article.get("content", ""),
             }
             transformed_records.append(record)
@@ -236,6 +243,7 @@ def fetch_weather():
                 ),
                 "wind_speed": forecast.get("wind", {}).get("speed", ""),
                 "visibility": forecast.get("visibility", ""),
+                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             }
             transformed_records.append(record)
 
