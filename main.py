@@ -19,15 +19,14 @@ discord_webhook_url = os.getenv("discord_webhook_url")
 gcp_project_id = os.getenv("gcp_project_id")
 
 NEWS_DATASET_ID = "news_pipeline"
-NEWS_TABLE_ID = "top_headlines"
+NEWS_TABLE_ID = "news_articles"
 
 WEATHER_DATASET_ID = "weather_pipeline"
 WEATHER_TABLE_ID = "weather_forecast"
 
-# grab today's top headlines
+# grab today's news articles
 now = datetime.datetime.now()
-# news_date = now.strftime("%Y-%m-%d")
-news_date = "2026-03-20"
+news_date = now.strftime("%Y-%m-%d")
 city = "Miami"
 
 
@@ -120,6 +119,9 @@ def load_to_bigquery(
         records = [r for r in records if r[dedup_field] not in existing_ids]
         if not records:
             logger.info("No new records to insert — all already exist")
+            send_discord_alert(
+                f"{table_id}: No new records to insert — all already exist"
+            )
             return
         write_disposition = bigquery.WriteDisposition.WRITE_APPEND
     else:
@@ -133,15 +135,18 @@ def load_to_bigquery(
     job.result()
 
     logger.info(f"Loaded {len(records)} records to {table_ref}")
+    send_discord_alert(f"{table_id}: Inserted {len(records)} new records")
 
 
 def fetch_news():
     transformed_records = []
 
     news_url = (
-        "https://newsapi.org/v2/top-headlines?"
-        "country=us&"
+        "https://newsapi.org/v2/everything?"
+        "q=news&"
         f"from={news_date}&"
+        f"to={news_date}&"
+        "language=en&"
         "sortBy=popularity&"
         f"apiKey={news_api_key}"
     )
@@ -184,9 +189,6 @@ def fetch_news():
             NEWS_TABLE_ID,
             NEWS_SCHEMA,
             dedup_field="article_id",
-        )
-        send_discord_alert(
-            f"News Pipeline succeeded: Loaded {len(transformed_records)} news articles"
         )
 
     except requests.exceptions.Timeout:
@@ -258,9 +260,6 @@ def fetch_weather():
             WEATHER_TABLE_ID,
             WEATHER_SCHEMA,
             dedup_field="forecast_id",
-        )
-        send_discord_alert(
-            f"Weather Pipeline succeeded: Loaded {len(transformed_records)} weather records"
         )
 
     except requests.exceptions.Timeout:
