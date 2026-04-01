@@ -25,9 +25,9 @@ WEATHER_DATASET_ID = "weather_pipeline"
 WEATHER_TABLE_ID = "weather_forecast"
 
 # grab today's top headlines
-# now = datetime.now()
+now = datetime.datetime.now()
 # news_date = now.strftime("%Y-%m-%d")
-news_date = "2026-03-31"
+news_date = "2026-03-20"
 city = "Miami"
 
 
@@ -173,13 +173,13 @@ def fetch_news():
                 "url": url,
                 "url_to_image": article.get("urlToImage", ""),
                 "published_at": article.get("publishedAt"),
-                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "content": article.get("content", ""),
             }
             transformed_records.append(record)
 
         load_to_bigquery(
-            transformed_records, NEWS_DATASET_ID, NEWS_TABLE_ID, NEWS_SCHEMA
+            transformed_records, NEWS_DATASET_ID, NEWS_TABLE_ID, NEWS_SCHEMA, dedup_field="article_id"
         )
         send_discord_alert(
             f"News Pipeline succeeded: Loaded {len(transformed_records)} news articles"
@@ -203,12 +203,13 @@ def fetch_news():
 
 def fetch_weather():
     transformed_records = []
+    weather_forecast_count = 40  # get next 5 days of 3-hour forecasts (8 per day)
 
     weather_url = (
         "https://api.openweathermap.org/data/2.5/forecast?"
         f"q=Miami&"
         f"units=imperial&"
-        f"cnt=3&"
+        f"cnt={weather_forecast_count}&"
         f"appid={weather_api_key}"
     )
 
@@ -243,7 +244,7 @@ def fetch_weather():
                 ),
                 "wind_speed": forecast.get("wind", {}).get("speed", ""),
                 "visibility": forecast.get("visibility", ""),
-                "created_at": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             transformed_records.append(record)
 
@@ -276,4 +277,4 @@ def fetch_weather():
 
 if __name__ == "__main__":
     fetch_news()
-    fetch_weather()
+    # fetch_weather()
