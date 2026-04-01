@@ -179,7 +179,11 @@ def fetch_news():
             transformed_records.append(record)
 
         load_to_bigquery(
-            transformed_records, NEWS_DATASET_ID, NEWS_TABLE_ID, NEWS_SCHEMA, dedup_field="article_id"
+            transformed_records,
+            NEWS_DATASET_ID,
+            NEWS_TABLE_ID,
+            NEWS_SCHEMA,
+            dedup_field="article_id",
         )
         send_discord_alert(
             f"News Pipeline succeeded: Loaded {len(transformed_records)} news articles"
@@ -277,4 +281,4 @@ def fetch_weather():
 
 if __name__ == "__main__":
     fetch_news()
-    # fetch_weather()
+    fetch_weather()
