@@ -2,8 +2,8 @@ name: Data Pipeline
 
 on:
   schedule:
-    - cron: "0 9 * * *"  # runs daily at 9AM UTC
-  workflow_dispatch:       # allows manual runs from GitHub UI
+    - cron: "0 13 * * *" # runs daily at 9AM Eastern
+  workflow_dispatch: # allows manual runs from GitHub UI
 
 permissions:
   id-token: write
