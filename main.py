@@ -5,6 +5,7 @@ import logging
 import requests
 from dotenv import load_dotenv
 from google.cloud import bigquery
+import json
 
 load_dotenv()
 
@@ -19,14 +20,14 @@ discord_webhook_url = os.getenv("discord_webhook_url")
 gcp_project_id = os.getenv("gcp_project_id")
 
 NEWS_DATASET_ID = "news_pipeline"
-NEWS_TABLE_ID = "news_articles"
+NEWS_TABLE_ID = "top_headlines"
 
 WEATHER_DATASET_ID = "weather_pipeline"
 WEATHER_TABLE_ID = "weather_forecast"
 
-# grab today's news articles
+# grab today's top headlines
 now = datetime.datetime.now()
-news_date = now.strftime("%Y-%m-%d")
+# news_date = now.strftime("%Y-%m-%d")
 city = "Miami"
 
 
@@ -184,13 +185,7 @@ def fetch_news():
     transformed_records = []
 
     news_url = (
-        "https://newsapi.org/v2/everything?"
-        "q=news&"
-        f"from={news_date}&"
-        f"to={news_date}&"
-        "language=en&"
-        "sortBy=popularity&"
-        f"apiKey={news_api_key}"
+        "https://newsapi.org/v2/top-headlines?" f"country=us&" f"apiKey={news_api_key}"
     )
 
     try:
