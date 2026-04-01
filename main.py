@@ -120,7 +120,7 @@ def load_to_bigquery(
         if not records:
             logger.info("No new records to insert — all already exist")
             send_discord_alert(
-                f"{table_id}: No new records to insert — all already exist"
+                f"⚠️ **{table_id}** — No new records to insert, all already exist"
             )
             return
         write_disposition = bigquery.WriteDisposition.WRITE_APPEND
@@ -135,7 +135,7 @@ def load_to_bigquery(
     job.result()
 
     logger.info(f"Loaded {len(records)} records to {table_ref}")
-    send_discord_alert(f"{table_id}: Inserted {len(records)} new records")
+    send_discord_alert(f"✅ **{table_id}** — Inserted **{len(records)}** new records")
 
 
 def fetch_news():
@@ -159,7 +159,7 @@ def fetch_news():
         if "articles" not in data:
             msg = "API format changed - missing 'articles' key"
             logger.error(msg)
-            send_discord_alert(f"NewsAPI schema change detected: {msg}")
+            send_discord_alert(f"🚨 **NewsAPI — Schema Change**> {msg}")
             return
 
         for article in data.get("articles", []):
@@ -194,17 +194,17 @@ def fetch_news():
     except requests.exceptions.Timeout:
         msg = "NewsAPI request timed out"
         logger.error(msg)
-        send_discord_alert(f"Pipeline error: {msg}")
+        send_discord_alert(f"❌ **News Pipeline Error**> {msg}")
 
     except requests.exceptions.HTTPError as e:
         msg = f"NewsAPI HTTP error: {e.response.status_code}"
         logger.error(msg)
-        send_discord_alert(f"Pipeline error: {msg}")
+        send_discord_alert(f"❌ **News Pipeline Error**> {msg}")
 
     except Exception as e:
         msg = f"Pipeline failed: {str(e)}"
         logger.error(msg)
-        send_discord_alert(msg)
+        send_discord_alert(f"❌ **News Pipeline Error**> {msg}")
 
 
 def fetch_weather():
@@ -228,7 +228,7 @@ def fetch_weather():
         if "list" not in data:
             msg = "API format changed - missing 'list' key"
             logger.error(msg)
-            send_discord_alert(f"WeatherAPI schema change detected: {msg}")
+            send_discord_alert(f"🚨 **WeatherAPI — Schema Change**> {msg}")
             return
 
         for forecast in data.get("list", []):
@@ -265,17 +265,17 @@ def fetch_weather():
     except requests.exceptions.Timeout:
         msg = "WeatherAPI request timed out"
         logger.error(msg)
-        send_discord_alert(f"Pipeline error: {msg}")
+        send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}")
 
     except requests.exceptions.HTTPError as e:
         msg = f"WeatherAPI HTTP error: {e.response.status_code}"
         logger.error(msg)
-        send_discord_alert(f"Pipeline error: {msg}")
+        send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}")
 
     except Exception as e:
         msg = f"Weather Pipeline failed: {str(e)}"
         logger.error(msg)
-        send_discord_alert(msg)
+        send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}")
 
 
 if __name__ == "__main__":
