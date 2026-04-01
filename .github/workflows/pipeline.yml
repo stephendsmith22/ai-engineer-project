@@ -1,0 +1,40 @@
+name: Data Pipeline
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # runs daily at 9AM UTC
+  workflow_dispatch:       # allows manual runs from GitHub UI
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv google-cloud-bigquery
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/939537809878/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "github-actions-sa@project-5923b4dc-48bb-4d00-aba.iam.gserviceaccount.com"
+
+      - name: Run pipeline
+        env:
+          news_api_key: ${{ secrets.NEWS_API_KEY }}
+          open_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}
+          discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          gcp_project_id: "project-5923b4dc-48bb-4d00-aba"
+        run: python main.py
