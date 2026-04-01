@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timezone
+import datetime
 import os
 import logging
 import requests
@@ -140,7 +140,9 @@ def load_to_bigquery(
 
 def validate_news_record(record: dict) -> bool:
     if not record.get("url"):
-        logger.warning(f"Skipping article missing URL: {record.get('title', 'unknown')}")
+        logger.warning(
+            f"Skipping article missing URL: {record.get('title', 'unknown')}"
+        )
         return False
     if not record.get("title"):
         logger.warning(f"Skipping article missing title: {record.get('url')}")
@@ -156,18 +158,24 @@ def validate_weather_record(record: dict) -> bool:
         logger.warning("Skipping weather record missing city")
         return False
     if not record.get("datetime"):
-        logger.warning(f"Skipping weather record missing datetime for city: {record.get('city')}")
+        logger.warning(
+            f"Skipping weather record missing datetime for city: {record.get('city')}"
+        )
         return False
     numeric_fields = ["temperature", "feels_like", "temp_min", "temp_max", "wind_speed"]
     for field in numeric_fields:
         val = record.get(field)
         if val == "" or val is None:
-            logger.warning(f"Skipping weather record — missing numeric field '{field}' for {record.get('city')} {record.get('datetime')}")
+            logger.warning(
+                f"Skipping weather record — missing numeric field '{field}' for {record.get('city')} {record.get('datetime')}"
+            )
             return False
         try:
             float(val)
         except (TypeError, ValueError):
-            logger.warning(f"Skipping weather record — invalid numeric value for '{field}': {val}")
+            logger.warning(
+                f"Skipping weather record — invalid numeric value for '{field}': {val}"
+            )
             return False
     return True
 
@@ -212,7 +220,7 @@ def fetch_news():
                 "url": url,
                 "url_to_image": article.get("urlToImage", ""),
                 "published_at": article.get("publishedAt"),
-                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "content": article.get("content", ""),
             }
             if validate_news_record(record):
@@ -285,7 +293,7 @@ def fetch_weather():
                 ),
                 "wind_speed": forecast.get("wind", {}).get("speed", ""),
                 "visibility": forecast.get("visibility", ""),
-                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             }
             if validate_weather_record(record):
                 transformed_records.append(record)
