@@ -171,7 +171,7 @@ def fetch_news(pipeline_run_id: str):
                 "authors": [
                     a.strip()
                     for a in (article.get("author") or "").split(",")
-                    if a.strip()
+                    if a.strip() and not a.strip().startswith("http")
                 ],
                 "title": article.get("title", ""),
                 "description": article.get("description", ""),
