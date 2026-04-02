@@ -104,7 +104,7 @@ def log_error_to_bigquery(api_source: str, error_type: str, error_message: str):
 
 
 def log_run_to_bigquery(
-    api_source: str, records_fetched: int, records_loaded: int, errors: int, status: str
+    api_source: str, records_fetched: int, records_loaded: int, errors: int, status: str, pipeline_run_id: str = ""
 ):
     try:
         client = bigquery.Client(project=gcp_project_id)
@@ -121,6 +121,7 @@ def log_run_to_bigquery(
                     f"{api_source}{timestamp}".encode()
                 ).hexdigest(),
                 "timestamp": timestamp,
+                "pipeline_run_id": pipeline_run_id,
                 "api_source": api_source,
                 "records_fetched": records_fetched,
                 "records_loaded": records_loaded,
@@ -137,12 +138,10 @@ def log_run_to_bigquery(
         logger.error(f"Failed to log pipeline run to BigQuery: {e}")
 
 
-def fetch_news():
+def fetch_news(pipeline_run_id: str):
     transformed_records = []
 
-    news_url = (
-        "https://newsapi.org/v2/top-headlines?" f"country=us&" f"apiKey={news_api_key}"
-    )
+    news_url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={news_api_key}"
 
     try:
         response = requests.get(news_url, timeout=10)
@@ -195,32 +194,32 @@ def fetch_news():
 
         status = "SUCCESS" if validation_errors == 0 else "PARTIAL"
         log_run_to_bigquery(
-            "NewsAPI", records_fetched, records_loaded, validation_errors, status
+            "NewsAPI", records_fetched, records_loaded, validation_errors, status, pipeline_run_id
         )
 
     except requests.exceptions.Timeout:
         msg = "NewsAPI request timed out"
         logger.error(msg)
         log_error_to_bigquery("NewsAPI", "Timeout", msg)
-        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **News Pipeline Error**> {msg}", logger)
 
     except requests.exceptions.HTTPError as e:
         msg = f"NewsAPI HTTP error: {e.response.status_code}"
         logger.error(msg)
         log_error_to_bigquery("NewsAPI", "HTTPError", msg)
-        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **News Pipeline Error**> {msg}", logger)
 
     except Exception as e:
         msg = f"Pipeline failed: {str(e)}"
         logger.error(msg)
         log_error_to_bigquery("NewsAPI", "Exception", msg)
-        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("NewsAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **News Pipeline Error**> {msg}", logger)
 
 
-def fetch_weather():
+def fetch_weather(pipeline_run_id: str):
     transformed_records = []
     weather_forecast_count = 40  # get next 5 days of 3-hour forecasts (8 per day)
     city = "Miami"
@@ -245,7 +244,10 @@ def fetch_weather():
             send_discord_alert(f"🚨 **WeatherAPI — Schema Change**> {msg}", logger)
             return
 
-        for forecast in data.get("list", []):
+        forecasts = data.get("list", [])
+        records_fetched = len(forecasts)
+
+        for forecast in forecasts:
             city = data.get("city", {}).get("name", "")
             dt_txt = forecast.get("dt_txt", "")
             forecast_id = hashlib.sha256(f"{city}_{dt_txt}".encode()).hexdigest()
@@ -269,7 +271,6 @@ def fetch_weather():
             if validate_weather_record(record):
                 transformed_records.append(record)
 
-        records_fetched = len(data.get("list", []))
         validation_errors = records_fetched - len(transformed_records)
         records_loaded = (
             load_to_bigquery(
@@ -285,31 +286,32 @@ def fetch_weather():
 
         status = "SUCCESS" if validation_errors == 0 else "PARTIAL"
         log_run_to_bigquery(
-            "WeatherAPI", records_fetched, records_loaded, validation_errors, status
+            "WeatherAPI", records_fetched, records_loaded, validation_errors, status, pipeline_run_id
         )
 
     except requests.exceptions.Timeout:
         msg = "WeatherAPI request timed out"
         logger.error(msg)
         log_error_to_bigquery("WeatherAPI", "Timeout", msg)
-        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}", logger)
 
     except requests.exceptions.HTTPError as e:
         msg = f"WeatherAPI HTTP error: {e.response.status_code}"
         logger.error(msg)
         log_error_to_bigquery("WeatherAPI", "HTTPError", msg)
-        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}", logger)
 
     except Exception as e:
         msg = f"Weather Pipeline failed: {str(e)}"
         logger.error(msg)
         log_error_to_bigquery("WeatherAPI", "Exception", msg)
-        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED")
+        log_run_to_bigquery("WeatherAPI", 0, 0, 1, "FAILED", pipeline_run_id)
         send_discord_alert(f"❌ **Weather Pipeline Error**> {msg}", logger)
 
 
 if __name__ == "__main__":
-    fetch_news()
-    fetch_weather()
+    pipeline_run_id = hashlib.sha256(datetime.datetime.now(datetime.timezone.utc).isoformat().encode()).hexdigest()
+    fetch_news(pipeline_run_id)
+    fetch_weather(pipeline_run_id)

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS pipeline_logs.api_errors (
 -- Activity Log: pipeline_logs.pipeline_runs
 CREATE TABLE IF NOT EXISTS pipeline_logs.pipeline_runs (
     run_id          STRING,   -- SHA256 hash of api_source + timestamp (primary key)
+    pipeline_run_id STRING,   -- Shared ID across all pipelines in the same execution
     timestamp       TIMESTAMP,
     api_source      STRING,
     records_fetched INTEGER,  -- Records returned by API

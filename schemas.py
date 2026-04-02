@@ -44,6 +44,7 @@ LOGS_SCHEMA = [
 
 RUNS_SCHEMA = [
     bigquery.SchemaField("run_id", "STRING"),
+    bigquery.SchemaField("pipeline_run_id", "STRING"),
     bigquery.SchemaField("timestamp", "TIMESTAMP"),
     bigquery.SchemaField("api_source", "STRING"),
     bigquery.SchemaField("records_fetched", "INTEGER"),

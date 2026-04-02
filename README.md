@@ -115,6 +115,27 @@ See [`schema.sql`](./schema.sql) for full table definitions.
 | `visibility` | INT64 | Visibility (meters) |
 | `created_at` | TIMESTAMP | Pipeline ingestion timestamp |
 
+**`pipeline_logs.api_errors`**
+| Column | Type | Description |
+|---|---|---|
+| `log_id` | STRING | SHA-256 hash of source + type + message + timestamp (primary key) |
+| `timestamp` | TIMESTAMP | When the error occurred |
+| `api_source` | STRING | `NewsAPI` or `WeatherAPI` |
+| `error_type` | STRING | `Timeout`, `HTTPError`, or `Exception` |
+| `error_message` | STRING | Full error message |
+
+**`pipeline_logs.pipeline_runs`**
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | STRING | SHA-256 hash of api_source + timestamp (primary key) |
+| `pipeline_run_id` | STRING | Shared ID linking all pipelines from the same execution |
+| `timestamp` | TIMESTAMP | When the run occurred |
+| `api_source` | STRING | `NewsAPI` or `WeatherAPI` |
+| `records_fetched` | INTEGER | Records returned by the API |
+| `records_loaded` | INTEGER | Records actually inserted into BigQuery |
+| `errors` | INTEGER | Records skipped due to validation failures |
+| `status` | STRING | `SUCCESS`, `PARTIAL`, or `FAILED` |
+
 ---
 
 ## Automated Scheduling
@@ -133,10 +154,13 @@ To run manually, go to the **Actions** tab in GitHub → **Data Pipeline** → *
 
 ---
 
-## Error Handling
+## Error Handling & Logging
 
-- **Timeouts** — caught and reported to Discord
-- **HTTP errors** — status code reported to Discord
-- **Schema changes** — detected if expected top-level keys are missing from API response
-- **Data validation** — records missing required fields or containing invalid values are skipped and logged before insert
+- **Timeouts** — caught and reported to Discord and logged to `pipeline_logs.api_errors`
+- **HTTP errors** — status code reported to Discord and logged to `pipeline_logs.api_errors`
+- **Unhandled exceptions** — caught, reported to Discord and logged to `pipeline_logs.api_errors`
+- **Schema changes** — detected if expected top-level keys are missing from API response, alerted to Discord
+- **Data validation** — records missing required fields or containing invalid numeric values are skipped and logged before insert
 - **Duplicate prevention** — records already in BigQuery are filtered out before each insert using SHA-256 hashed primary keys
+
+Every pipeline run (success or failure) writes a summary row to `pipeline_logs.pipeline_runs` including records fetched, records loaded, validation errors, and status. Runs from the same execution share a `pipeline_run_id` so NewsAPI and WeatherAPI runs can be correlated.
