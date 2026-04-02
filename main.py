@@ -104,7 +104,12 @@ def log_error_to_bigquery(api_source: str, error_type: str, error_message: str):
 
 
 def log_run_to_bigquery(
-    api_source: str, records_fetched: int, records_loaded: int, errors: int, status: str, pipeline_run_id: str = ""
+    api_source: str,
+    records_fetched: int,
+    records_loaded: int,
+    errors: int,
+    status: str,
+    pipeline_run_id: str = "",
 ):
     try:
         client = bigquery.Client(project=gcp_project_id)
@@ -194,7 +199,12 @@ def fetch_news(pipeline_run_id: str):
 
         status = "SUCCESS" if validation_errors == 0 else "PARTIAL"
         log_run_to_bigquery(
-            "NewsAPI", records_fetched, records_loaded, validation_errors, status, pipeline_run_id
+            "NewsAPI",
+            records_fetched,
+            records_loaded,
+            validation_errors,
+            status,
+            pipeline_run_id,
         )
 
     except requests.exceptions.Timeout:
@@ -286,7 +296,12 @@ def fetch_weather(pipeline_run_id: str):
 
         status = "SUCCESS" if validation_errors == 0 else "PARTIAL"
         log_run_to_bigquery(
-            "WeatherAPI", records_fetched, records_loaded, validation_errors, status, pipeline_run_id
+            "WeatherAPI",
+            records_fetched,
+            records_loaded,
+            validation_errors,
+            status,
+            pipeline_run_id,
         )
 
     except requests.exceptions.Timeout:
@@ -312,6 +327,8 @@ def fetch_weather(pipeline_run_id: str):
 
 
 if __name__ == "__main__":
-    pipeline_run_id = hashlib.sha256(datetime.datetime.now(datetime.timezone.utc).isoformat().encode()).hexdigest()
+    pipeline_run_id = hashlib.sha256(
+        datetime.datetime.now(datetime.timezone.utc).isoformat().encode()
+    ).hexdigest()
     fetch_news(pipeline_run_id)
     fetch_weather(pipeline_run_id)
