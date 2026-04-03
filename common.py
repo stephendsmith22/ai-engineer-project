@@ -38,7 +38,7 @@ def ensure_dataset_and_table(
             logger.info(f"Table '{table_id}' schema updated")
     except Exception:
         client.create_table(table_ref)
-    logger.info(f"Table '{table_id}' ready")
+    logger.info(f"Table '{table_id}' ready\n")
 
 
 def load_to_bigquery(
